@@ -6,7 +6,8 @@ import time
 
 import argparse
 
-print("define and move array, device and host")
+
+print("array, define in and move between device and host")
 a_gpu = cp.array([1, 2, 3]) # define array a_gpu on the current device
 b_cpu = np.array([4, 5, 6]) # define array b_cpu on the host
 b_gpu = cp.asarray(b_cpu) # move the array to the current device
@@ -21,8 +22,12 @@ def multiply(a, b):
     xp_a = cp.get_array_module(a)
     xp_b = cp.get_array_module(b)
     return a * b
-print(multiply(a_gpu, b_gpu)) # call multiply by device arguments
-print(multiply(a_cpu, b_cpu)) # call multiply by host arguments
+c_cpu = multiply(a_cpu, b_cpu) # call multiply by host arguments
+print(c_cpu)
+print(type(c_cpu))
+c_gpu = multiply(a_gpu, b_gpu) # call multiply by device arguments
+print(c_gpu)
+print(type(c_gpu))
 
 
 # User-defined Kernels: elementwise, reduction, raw
@@ -38,11 +43,10 @@ squared_diff = cp.ElementwiseKernel(
         'float32 z',
         'z = (x - y) * (x - y)',
         'squared_diff')
-print(squared_diff(x, y))
-# Output args can be explicitly specified (next to the input args)
-squared_diff(x, y, z)
+print(squared_diff(x, y)) # call elementwise method on cp.core.core.ndarray
+print(squared_diff(x, 5)) # call elementwise method on scalar and cp.core.core.ndarray
+squared_diff(x, y, z) # Output args can be explicitly specified (next to the input args)
 print(z)
-print(squared_diff(x, 5)) # call elementwise method on scalar
 
 
 # If a type specifier is one character, then it is treated as a "type placeholder". It can be used to define a "type-generic" kernels.
@@ -77,7 +81,7 @@ squared_diff_super_generic = cp.ElementwiseKernel(
         'z = (x - y) * (x - y)',
         'squared_diff')
 print(squared_diff_super_generic(x, y, z))
-# ?->  Note that this kernel requires the output argument explicitly specified, because the type Z cannot be automatically determined from the input arguments.
+# Note that this kernel requires the output argument explicitly specified, because the type Z cannot be automatically determined from the input arguments.
 
 
 print('ElementwiseKernel type-generic manual indexing')
@@ -127,7 +131,7 @@ yy = cp.zeros((5, 5), dtype=cp.float32)
 add_kernel((5,), (5,), (x1, x2, yy)) # grid, block and arguments
 print(yy)
 # The kernel does not have return values. You need to pass both input arrays and output arrays as arguments.
-# No validation will be performed by CuPy for arguments passed to the kernel, including types and number of arguments. Especially note that when passing ndarray, its dtype should match with the type of the argument declared in the method signature of the CUDA source code (unless you are casting arrays intentionally). For example, cupy.float32 and cupy.uint64 arrays must be passed to the argument typed as float* and unsigned long long*. For Python primitive types, int, float and bool map to long long, double and bool, respectively.
+# No validation will be performed by CuPy for arguments passed to the kernel, including types and number of arguments. Especially note that when passing ndarray, its dtype should match with the type of the argument declared in the method signature of the CUDA source code (unless you are casting arrays intentionally). For example, "cupy.float32" and "cupy.uint64" arrays must be passed to the argument typed as "float*" and "unsigned long long*". For Python primitive types, "int", "float" and "bool" map to "long long", "double" and "bool", respectively.
 # When using printf() in your CUDA kernel, you may need to synchronize the stream to see the output. You can use cupy.cuda.Stream.null.synchronize() if you are using the default stream.
 
 print("cupy.fuse() decorator")

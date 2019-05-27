@@ -4,7 +4,7 @@ import math
 import numpy as np
 
 
-def initialize(L, N, gamma=1.4):           # 48N
+def initialize(L, N, gamma=1.4):
     """initializes U[N][rho, rho*u, e] and h = L/N
     :rtype : float[][], float
     :param L: float, length of shock tube
@@ -12,27 +12,26 @@ def initialize(L, N, gamma=1.4):           # 48N
     :param gamma: ideal gas constant, default is air: 1.4
     :return: returns U and h
     """
-    U = [[0.0] * 3 for j in range(N)]  # 3N
+    U = [[0.0] * 3 for j in range(N)]
     h = L / float(N - 1)
 
-    for j in range(N):  # 18N
-        # left_state
-        rho = 1.0
-        P = 1.0
-        v = 0.0
+    for j in range(N):
         if j > int(N / 2):
             # right_state
             rho = 0.125
             P = 0.1
-            # v = 0.0
+            v = 0.0
+        else:
+            # left_state
+            rho = 1.0
+            P = 1.0
+            v = 0.0
         e = P / (gamma - 1) + rho * v**2 / 2
         U[j][0] = rho
         U[j][1] = rho * v
         U[j][2] = e
-        # vol[j] = 1.0
 
-    # tau = CFL * h / c_max(U)  # c_max() = 20N
-    return U, h  # , tau
+    return U, h
 
 
 def boundary_conditions(U):  # 0N
@@ -105,7 +104,7 @@ def Lax_Wendroff_step(h, tau, U, gamma=1.4):  # 92N
     N = len(U)
     U_new = [[0.0] * 3 for j in range(N)]
     F = [[0.0] * 3 for j in range(N)]
-    
+
     # compute flux F from U
     for j in range(N):
         rho = U[j][0]

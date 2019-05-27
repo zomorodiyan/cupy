@@ -1,5 +1,5 @@
-def check(U):
-    print(f"U[0][0] = {U[0][0]}", end="  ")
+'''
+def check(U): print(f"U[0][0] = {U[0][0]}", end="  ")
     print(f"U[1][0] = {U[1][0]}", end="  ")
     print(f"U[2][0] = {U[2][0]}", end="  ")
     print(f"U[3][0] = {U[2][0]}", end="  ")
@@ -9,7 +9,7 @@ def check(U):
     print(f"U[-3][0] = {U[-3][0]}", end="  ")
     print(f"U[-4][0] = {U[-4][0]}", end="  ")
     print(f"U[-5][0] = {U[-5][0]}", end="\n")
-
+'''
 
 def out_file(U, plot, file_name, t, gamma=1.4):
     """ write solution in plot files and print averages"""
