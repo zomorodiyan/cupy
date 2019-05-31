@@ -4,6 +4,7 @@ import math
 from methods_stream import out_file
 from methods_shocktube import initialize, boundary_conditions, c_max, Lax_Wendroff_step, Roe_step, Lapidus_viscosity
 import numpy as np
+import cupy as cp
 
 L = 1.0                     # length of shock tube
 gamma = 1.4                 # ratio of specific heats
@@ -21,7 +22,31 @@ def solve(step_algorithm, t_max, file_name, plots=5):
     :param file_name: core name of output files
     :param plots: number of plots, default is 5
     """
-    U, h = initialize(L, N, gamma)
+    # initial values
+    p_left = 1.0
+    p_right = 0.1
+    rho_left = 1.0
+    rho_right = 0.125
+    v_left = 0.0
+    v_right = 0.0
+
+    rhov_left = rho_left * v_left
+    rhov_right = rho_right * v_right
+    e_left = p_left / (gamma - 1) + rho_left * v_left**2 / 2
+    e_right = p_right / (gamma - 1) + rho_right * v_right**2 / 2
+
+    U_gpu = cp.zeros((N, 3), dtype=np.float64)
+    U_gpu[:N/2+1, 0] = rho_left
+    U_gpu[N/2+1:, 0] = rho_right
+    U_gpu[:N/2+1, 1] = rhov_left
+    U_gpu[N/2+1:, 1] = rhov_right
+    U_gpu[:N/2+1, 2] = e_left
+    U_gpu[N/2+1:, 2] = e_right
+    U = cp.asnumpy(U_gpu)
+
+    h = L / float(N - 1)
+    # end of initial values
+
     tau = 0
     t = 0.0
     step = 0
@@ -35,7 +60,7 @@ def solve(step_algorithm, t_max, file_name, plots=5):
             break
         while t < t_max * plot / float(plots):
             U = boundary_conditions(U)
-            tau = CFL * h / c_max(U, gamma)
+            tau = CFL * h / c_max(U, gamma) # time step
             U = step_algorithm(h, tau, U, gamma)
             U = Lapidus_viscosity(h, tau, U, nu)
             t += tau
