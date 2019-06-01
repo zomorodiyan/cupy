@@ -1,8 +1,11 @@
+# issues:
+# step_algorithm argument is obsolete and should be removed
+
 # Euler equations for Sod's shocktube problem
 
 import math
 from methods_stream import out_file
-from methods_shocktube import initialize, boundary_conditions, c_max, Lax_Wendroff_step, Roe_step, Lapidus_viscosity
+from methods_shocktube import boundary_conditions, c_max, Lax_Wendroff_step, Roe_step, Lapidus_viscosity
 import numpy as np
 import cupy as cp
 
@@ -42,7 +45,8 @@ def solve(step_algorithm, t_max, file_name, plots=5):
     U_gpu[N/2+1:, 1] = rhov_right
     U_gpu[:N/2+1, 2] = e_left
     U_gpu[N/2+1:, 2] = e_right
-    U = cp.asnumpy(U_gpu)
+    U = cp.asnumpy(U_gpu) # move the array to the host
+
 
     h = L / float(N - 1)
     # end of initial values
@@ -59,12 +63,78 @@ def solve(step_algorithm, t_max, file_name, plots=5):
             print(" Solutions in files 0-..", plots, "-" + file_name)
             break
         while t < t_max * plot / float(plots):
-            U = boundary_conditions(U)
-            tau = CFL * h / c_max(U, gamma) # time step
-            U = step_algorithm(h, tau, U, gamma)
+            U_gpu = cp.asarray(U) # move the array to the current device
+            # boundary condition
+            U_gpu[0, 0] = U_gpu[1, 0]
+            U_gpu[0, 1] = -U_gpu[1, 1]
+            U_gpu[0, 2] = U_gpu[1, 2]
+            U_gpu[-1, 0] = U_gpu[-2, 0]
+            U_gpu[-1, 1] = -U_gpu[-2, 1]
+            U_gpu[-1, 2] = U_gpu[-2, 2]
+            # time step
+            tau = CFL * h / c_max(U, gamma)
+            if(tau<0.0001):
+                break
+
+            # Lax Wendroff step and Roe step
+            is_Lax_Wendroff = True
+            if(is_Lax_Wendroff):
+                #{{{ Lax_Wendroff step algorithm
+                U_new_gpu = cp.zeros((N, 3), dtype=np.float64)
+                F_gpu = cp.zeros((N, 3), dtype=np.float64)
+
+                # compute flux F from U
+                rho_gpu = U_gpu[:, 0]
+                m_gpu = U_gpu[:, 1]
+                e_gpu = U_gpu[:, 2]
+                P_gpu = (gamma - 1) * (e_gpu - m_gpu**2 / rho_gpu / 2)
+                F_gpu[:, 0] = m_gpu
+                F_gpu[:, 1] = m_gpu**2 / rho_gpu + P_gpu
+                F_gpu[:, 2] = m_gpu / rho_gpu * (e_gpu + P_gpu)
+
+                for j in range(1, N - 1):
+                    for i in range(3):
+                        U_new_gpu[j, i] = ((U_gpu[j + 1, i] + U_gpu[j, i]) / 2 - tau / 2 / h * (F_gpu[j + 1, i] - F_gpu[j, i]))
+
+                # boundary condition
+                U_new_gpu[0, 0] = U_new_gpu[1, 0]
+                U_new_gpu[0, 1] = -U_new_gpu[1, 1]
+                U_new_gpu[0, 2] = U_new_gpu[1, 2]
+                U_new_gpu[-1, 0] = U_new_gpu[-2, 0]
+                U_new_gpu[-1, 1] = -U_new_gpu[-2, 1]
+                U_new_gpu[-1, 2] = U_new_gpu[-2, 2]
+
+
+                # compute flux at half steps
+                rho_gpu = U_new_gpu[:, 0]
+                m_gpu = U_new_gpu[:, 1]
+                e_gpu = U_new_gpu[:, 2]
+                P_gpu = (gamma - 1) * (e_gpu - m_gpu**2 / rho_gpu / 2)
+                F_gpu[:, 0] = m_gpu
+                F_gpu[:, 1] = m_gpu**2 / rho_gpu + P_gpu
+                F_gpu[:, 2] = m_gpu / rho_gpu * (e_gpu + P_gpu)
+
+                # step using half step flux
+                for j in range(1, N - 1):
+                    for i in range(3):
+                        U_new_gpu[j][i] = U_gpu[j][i] - tau / h * (F_gpu[j][i] - F_gpu[j - 1][i])
+
+                # update U from U_new
+                U_gpu = U_new_gpu
+                U = cp.asnumpy(U_gpu) # move the array to the host
+
+                #}}}
+            else:
+                #{{{ Roe step algorithm
+                pass
+                #}}}
             U = Lapidus_viscosity(h, tau, U, nu)
             t += tau
             step += 1
+        else:
+            continue
+        print('Diverged! tau < E-4, time step, "tau" is getting smaller and smaller.')
+        break
 
 
 print(" Sod's Shocktube Problem using various algorithms:")

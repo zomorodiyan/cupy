@@ -4,51 +4,6 @@ import math
 import numpy as np
 
 
-def initialize(L, N, gamma=1.4):
-    """initializes U[N][rho, rho*u, e] and h = L/N
-    :rtype : float[][], float
-    :param L: float, length of shock tube
-    :param N: number of grid points
-    :param gamma: ideal gas constant, default is air: 1.4
-    :return: returns U and h
-    """
-    U = [[0.0] * 3 for j in range(N)]
-    h = L / float(N - 1)
-
-    for j in range(N):
-        if j > int(N / 2):
-            # right_state
-            rho = 0.125
-            P = 0.1
-            v = 0.0
-        else:
-            # left_state
-            rho = 1.0
-            P = 1.0
-            v = 0.0
-        e = P / (gamma - 1) + rho * v**2 / 2
-        U[j][0] = rho
-        U[j][1] = rho * v
-        U[j][2] = e
-
-    return U, h
-
-
-def boundary_conditions(U):  # 0N
-    """reflection boundary conditions at the tube ends
-    :rtype : float[][]
-    :param U: list of states values at the N points
-    :return: returns U
-    """
-    U[0][0] = U[1][0]
-    U[0][1] = -U[1][1]
-    U[0][2] = U[1][2]
-    U[-1][0] = U[-2][0]
-    U[-1][1] = -U[-2][1]
-    U[-1][2] = U[-2][2]
-    return U
-
-
 def c_max(U, gamma):   # 22N
     """returns the highest sum of c, sound speed and abs(v), velocity size
     :param U: list of states values at the N points
