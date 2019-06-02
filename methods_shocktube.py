@@ -75,7 +75,13 @@ def Lax_Wendroff_step(h, tau, U, gamma=1.4):  # 92N
         for i in range(3):
             U_new[j][i] = ((U[j + 1][i] + U[j][i]) / 2 -
                            tau / 2 / h * (F[j + 1][i] - F[j][i]))
-    U_new = boundary_conditions(U_new)
+    # boundary_conditions
+    U_new[0][0] = U_new[1][0]
+    U_new[0][1] = -U_new[1][1]
+    U_new[0][2] = U_new[1][2]
+    U_new[-1][0] = U_new[-2][0]
+    U_new[-1][1] = -U_new[-2][1]
+    U_new[-1][2] = U_new[-2][2]
 
     # compute flux at half steps
     for j in range(N):
