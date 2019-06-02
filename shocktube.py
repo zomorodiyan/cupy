@@ -5,7 +5,6 @@
 
 import math
 from methods_stream import out_file
-from methods_shocktube import c_max, Lax_Wendroff_step, Roe_step, Lapidus_viscosity
 import numpy as np
 import cupy as cp
 
@@ -45,7 +44,6 @@ def solve(step_algorithm, t_max, file_name, plots=5):
     U_gpu[N/2+1:, 1] = rhov_right
     U_gpu[:N/2+1, 2] = e_left
     U_gpu[N/2+1:, 2] = e_right
-    U = cp.asnumpy(U_gpu) # move the array to the host
 
 
     h = L / float(N - 1)
@@ -57,13 +55,14 @@ def solve(step_algorithm, t_max, file_name, plots=5):
     plot = 0
     print(" Time t\t\trho_avg\t\tu_avg\t\te_avg\t\tP_avg")
     while True:
+        U = cp.asnumpy(U_gpu) # move the array to the host
         out_file(U, plot, file_name, t, gamma)
         plot += 1
         if plot > plots:
             print(" Solutions in files 0-..", plots, "-" + file_name)
             break
         while t < t_max * plot / float(plots):
-            U_gpu = cp.asarray(U) # move the array to the current device
+            #U_gpu = cp.asarray(U) # move the array to the current device
             # boundary condition
             U_gpu[0, 0] = U_gpu[1, 0]
             U_gpu[0, 1] = -U_gpu[1, 1]
@@ -72,8 +71,18 @@ def solve(step_algorithm, t_max, file_name, plots=5):
             U_gpu[-1, 1] = -U_gpu[-2, 1]
             U_gpu[-1, 2] = U_gpu[-2, 2]
             U = cp.asnumpy(U_gpu) # move the array to the host
+
+            c_max = 0.0
+            for j in range(N):
+                if U_gpu[j][0] != 0.0:
+                    rho_gpu = U_gpu[j][0]
+                    v_gpu = U_gpu[j][1] / rho_gpu
+                    P_gpu = (U_gpu[j][2] - rho_gpu * v_gpu**2 / 2) * (gamma - 1)
+                    c_gpu = cp.sqrt(gamma * abs(P_gpu) / rho_gpu)
+                    if c_max < c_gpu + abs(v_gpu):
+                        c_max = c_gpu + abs(v_gpu)
             # time step
-            tau = CFL * h / c_max(U, gamma)
+            tau = CFL * h / c_max
             #print("tau: ", tau) # test
             if(tau < 1e-4):
                 break
@@ -124,7 +133,6 @@ def solve(step_algorithm, t_max, file_name, plots=5):
                 # update U from U_new
                 U_gpu = U_new_gpu
                 #}}}
-                U = cp.asnumpy(U_gpu) # move the array to the host
             elif(step_algorithm is "Roe_step"):
                 #{{{ Roe step algorithm
                 # allocate temporary arrays
@@ -323,11 +331,24 @@ def solve(step_algorithm, t_max, file_name, plots=5):
                 for j in range(1, N - 1):   # 15N
                     U_gpu[j, :] -= tau / h * (F_gpu[j + 1, :] - F_gpu[j, :])
                 #}}}
-                U = cp.asnumpy(U_gpu) # move the array to the host
             else:
                 print("Error! Invalid step_algorithm.")
                 return(1)
-            U = Lapidus_viscosity(h, tau, U, nu)
+
+            # Lapidus_viscosity
+            U_temp_gpu = cp.zeros((N, 3), dtype=np.float64)
+            for j in range(1, N):
+                U_temp_gpu[j, :] = U_gpu[j, :] - U_gpu[j - 1, :]
+
+            # multiply Delta_U by |Delta_U|
+            for j in range(1, N):
+                for i in range(3):
+                    U_temp_gpu[j][i] *= abs(U_temp_gpu[j][i])
+
+            # add artificial viscosity
+            for j in range(2, N):
+                U_gpu[j, :] += nu * tau / h * (U_temp_gpu[j, :] - U_temp_gpu[j - 1, :])
+
             t += tau
             step += 1
         else:
