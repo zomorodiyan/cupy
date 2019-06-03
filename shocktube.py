@@ -103,6 +103,7 @@ def solve(step_algorithm, t_max, file_name, plots=5):
                 F_gpu[:, 1] = m_gpu**2 / rho_gpu + P_gpu
                 F_gpu[:, 2] = m_gpu / rho_gpu * (e_gpu + P_gpu)
 
+
                 for j in range(1, N - 1):
                     for i in range(3):
                         U_new_gpu[j, i] = ((U_gpu[j + 1, i] + U_gpu[j, i]) / 2 - tau / 2 / h * (F_gpu[j + 1, i] - F_gpu[j, i]))
@@ -135,52 +136,31 @@ def solve(step_algorithm, t_max, file_name, plots=5):
                 #}}}
             elif(step_algorithm is "Roe_step"):
                 #{{{ Roe step algorithm
-                # allocate temporary arrays
+                # temporary variables
                 tiny = 1e-30
                 sbpar1 = 2.0
                 sbpar2 = 2.0
                 vol_gpu = cp.ones((N), dtype=np.float64)
-                vol = np.ones((N))
                 F_gpu = cp.zeros((N, 3), dtype=np.float64)
-                F = [[0.0] * 3 for j in range(N)]  # 3N
                 fludif_gpu = cp.zeros((N, 3), dtype=np.float64)
-                fludif = [ [0.0] * 3 for i in range(N) ]
                 rsumr_gpu = cp.zeros((N), dtype=np.float64)
-                rsumr = [ 0.0 for i in range(N) ]
                 utilde_gpu = cp.zeros((N), dtype=np.float64)
-                utilde = [ 0.0 for i in range(N) ]
                 htilde_gpu = cp.zeros((N), dtype=np.float64)
-                htilde = [ 0.0 for i in range(N) ]
                 absvt_gpu = cp.zeros((N), dtype=np.float64)
-                absvt = [ 0.0 for i in range(N) ]
                 uvdif_gpu = cp.zeros((N), dtype=np.float64)
-                uvdif = [ 0.0 for i in range(N) ]
                 ssc_gpu = cp.zeros((N), dtype=np.float64)
-                ssc = [ 0.0 for i in range(N) ]
                 vsc_gpu = cp.zeros((N), dtype=np.float64)
-                vsc = [ 0.0 for i in range(N) ]
                 a_gpu = cp.zeros((N, 3), dtype=np.float64)
-                a = [ [0.0] * 3 for i in range(N) ]
                 ac1_gpu = cp.zeros((N, 3), dtype=np.float64)
-                ac1 = [ [0.0] * 3 for i in range(N) ]
                 ac2_gpu = cp.zeros((N, 3), dtype=np.float64)
-                ac2 = [ [0.0] * 3 for i in range(N) ]
                 w_gpu = cp.zeros((N, 4), dtype=np.float64)
-                w = [ [0.0] * 4 for i in range(N) ]
                 eiglam_gpu = cp.zeros((N, 3), dtype=np.float64)
-                eiglam = [ [0.0] * 3 for i in range(N) ]
                 sgn_gpu = cp.zeros((N, 3), dtype=np.float64)
-                sgn = [ [0.0] * 3 for i in range(N) ]
                 Fc_gpu = cp.zeros((N, 3), dtype=np.float64)
-                Fc = [ [0.0] * 3 for i in range(N) ]
                 Fl_gpu = cp.zeros((N, 3), dtype=np.float64)
-                Fl = [ [0.0] * 3 for i in range(N) ]
                 Fr_gpu = cp.zeros((N, 3), dtype=np.float64)
-                Fr = [ [0.0] * 3 for i in range(N) ]
                 ptest_gpu = cp.zeros((N), dtype=np.float64)
-                ptest = [ 0.0 for i in range(N) ]
                 isb_gpu = cp.zeros((N, 3), dtype=np.uint64)
-                isb = [ [0] * 3 for i in range(N) ]
 
                 # initialize control variable to 0
                 icntl = 0
@@ -285,7 +265,7 @@ def solve(step_algorithm, t_max, file_name, plots=5):
                 for i in range(1, N - 1):
                     ptest_gpu[i] = (h * vol_gpu[i] * U_gpu[i, 1] +
                                tau * (F_gpu[i, 1] - F_gpu[i + 1, 1]))
-                    ptest[i] = (- ptest_gpu[i] * ptest_gpu[i] + 2 * (h * vol_gpu[i] * U_gpu[i, 0] +
+                    ptest_gpu[i] = (- ptest_gpu[i] * ptest_gpu[i] + 2 * (h * vol_gpu[i] * U_gpu[i, 0] +
                                tau * (F_gpu[i, 0] - F_gpu[i + 1, 0])) * (h * vol_gpu[i] *
                                U_gpu[i, 2] + tau * (F_gpu[i, 2] - F_gpu[i + 1, 2])))
 
@@ -365,5 +345,5 @@ print()
 print(" Lax-Wendroff Algorithm")
 solve("Lax_Wendroff_step", 1.0, "lax.data")
 print()
-print(" Roe Solver Algorithm")
+#print(" Roe Solver Algorithm")
 solve("Roe_step", 1.0, "roe.data")
