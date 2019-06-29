@@ -78,58 +78,109 @@ def solve(step_algorithm, t_max, file_name, plots=5):
             elif(step_algorithm is "Roe_step"):
                 #{{{ Roe step algorithm
                 # temporary variables
-                rho = U_gpu[:, 0]
-                m = U_gpu[:, 1]
-                e = U_gpu[:, 2]
                 tiny = 1e-30
                 sbpar1 = 2.0
                 sbpar2 = 2.0
-                w0 = cp.ones((N), dtype=np.float64)
-                w1 = cp.ones((N), dtype=np.float64)
-                w2 = cp.ones((N), dtype=np.float64)
-                w3 = cp.ones((N), dtype=np.float64)
-                vol = cp.ones((N), dtype=np.float64)
-                F0 = cp.zeros((N), dtype=np.float64)
-                F1 = cp.zeros((N), dtype=np.float64)
-                F2 = cp.zeros((N), dtype=np.float64)
-                Fc0 = cp.zeros((N), dtype=np.float64)
-                Fc1 = cp.zeros((N), dtype=np.float64)
-                Fc2 = cp.zeros((N), dtype=np.float64)
-                Fl0 = cp.zeros((N), dtype=np.float64)
-                Fl1 = cp.zeros((N), dtype=np.float64)
-                Fl2 = cp.zeros((N), dtype=np.float64)
-                Fr0 = cp.zeros((N), dtype=np.float64)
-                Fr1 = cp.zeros((N), dtype=np.float64)
-                Fr2 = cp.zeros((N), dtype=np.float64)
-                fludif0 = cp.zeros((N), dtype=np.float64)
-                fludif1 = cp.zeros((N), dtype=np.float64)
-                fludif2 = cp.zeros((N), dtype=np.float64)
-                rsumr = cp.zeros((N), dtype=np.float64)
-                utilde = cp.zeros((N), dtype=np.float64)
-                htilde = cp.zeros((N), dtype=np.float64)
-                absvt = cp.zeros((N), dtype=np.float64)
-                uvdif = cp.zeros((N), dtype=np.float64)
-                ssc = cp.zeros((N), dtype=np.float64)
-                vsc = cp.zeros((N), dtype=np.float64)
+                rho = U_gpu[:, 0]
+                m = U_gpu[:, 1]
+                e = U_gpu[:, 2]
                 a0 = cp.zeros((N), dtype=np.float64)
+                a0p1 = cp.zeros((N), dtype=np.float64)
                 a1 = cp.zeros((N), dtype=np.float64)
+                a1p1 = cp.zeros((N), dtype=np.float64)
                 a2 = cp.zeros((N), dtype=np.float64)
+                a2p1 = cp.zeros((N), dtype=np.float64)
+                absvt = cp.zeros((N), dtype=np.float64)
+                absvtp1 = cp.zeros((N), dtype=np.float64)
                 ac10 = cp.zeros((N), dtype=np.float64)
+                ac10p1 = cp.zeros((N), dtype=np.float64)
                 ac11 = cp.zeros((N), dtype=np.float64)
+                ac11p1 = cp.zeros((N), dtype=np.float64)
                 ac12 = cp.zeros((N), dtype=np.float64)
+                ac12p1 = cp.zeros((N), dtype=np.float64)
                 ac20 = cp.zeros((N), dtype=np.float64)
+                ac20p1 = cp.zeros((N), dtype=np.float64)
                 ac21 = cp.zeros((N), dtype=np.float64)
+                ac21p1 = cp.zeros((N), dtype=np.float64)
                 ac22 = cp.zeros((N), dtype=np.float64)
+                ac22p1 = cp.zeros((N), dtype=np.float64)
                 eiglam0 = cp.zeros((N), dtype=np.float64)
+                eiglam0p1 = cp.zeros((N), dtype=np.float64)
                 eiglam1 = cp.zeros((N), dtype=np.float64)
+                eiglam1p1 = cp.zeros((N), dtype=np.float64)
                 eiglam2 = cp.zeros((N), dtype=np.float64)
-                sgn0 = cp.zeros((N), dtype=np.float64)
-                sgn1 = cp.zeros((N), dtype=np.float64)
-                sgn2 = cp.zeros((N), dtype=np.float64)
-                ptest = cp.zeros((N), dtype=np.float64)
+                eiglam2p1 = cp.zeros((N), dtype=np.float64)
+                F0 = cp.zeros((N), dtype=np.float64)
+                F0p1 = cp.zeros((N), dtype=np.float64)
+                F1 = cp.zeros((N), dtype=np.float64)
+                F1p1 = cp.zeros((N), dtype=np.float64)
+                F2 = cp.zeros((N), dtype=np.float64)
+                F2p1 = cp.zeros((N), dtype=np.float64)
+                Fc0 = cp.zeros((N), dtype=np.float64)
+                Fc0m1 = cp.zeros((N), dtype=np.float64)
+                Fc0p1 = cp.zeros((N), dtype=np.float64)
+                Fc1 = cp.zeros((N), dtype=np.float64)
+                Fc1m1 = cp.zeros((N), dtype=np.float64)
+                Fc1p1 = cp.zeros((N), dtype=np.float64)
+                Fc2 = cp.zeros((N), dtype=np.float64)
+                Fc2m1 = cp.zeros((N), dtype=np.float64)
+                Fc2p1 = cp.zeros((N), dtype=np.float64)
+                Fl0 = cp.zeros((N), dtype=np.float64)
+                Fl0p1 = cp.zeros((N), dtype=np.float64)
+                Fl1 = cp.zeros((N), dtype=np.float64)
+                Fl1p1 = cp.zeros((N), dtype=np.float64)
+                Fl2 = cp.zeros((N), dtype=np.float64)
+                Fl2p1 = cp.zeros((N), dtype=np.float64)
+                Fr0 = cp.zeros((N), dtype=np.float64)
+                Fr0p1 = cp.zeros((N), dtype=np.float64)
+                Fr1 = cp.zeros((N), dtype=np.float64)
+                Fr1p1 = cp.zeros((N), dtype=np.float64)
+                Fr2 = cp.zeros((N), dtype=np.float64)
+                Fr2p1 = cp.zeros((N), dtype=np.float64)
+                fludif0 = cp.zeros((N), dtype=np.float64)
+                fludif0p1 = cp.zeros((N), dtype=np.float64)
+                fludif1 = cp.zeros((N), dtype=np.float64)
+                fludif1p1 = cp.zeros((N), dtype=np.float64)
+                fludif2 = cp.zeros((N), dtype=np.float64)
+                fludif2p1 = cp.zeros((N), dtype=np.float64)
+                htilde = cp.zeros((N), dtype=np.float64)
+                htildep1 = cp.zeros((N), dtype=np.float64)
                 isb0 = cp.zeros((N), dtype=np.uint64)
+                isb0p1 = cp.zeros((N), dtype=np.uint64)
                 isb1 = cp.zeros((N), dtype=np.uint64)
+                isb1p1 = cp.zeros((N), dtype=np.uint64)
                 isb2 = cp.zeros((N), dtype=np.uint64)
+                isb2p1 = cp.zeros((N), dtype=np.uint64)
+                ptest = cp.zeros((N), dtype=np.float64)
+                rsumr = cp.zeros((N), dtype=np.float64)
+                rsumrp1 = cp.zeros((N), dtype=np.float64)
+                sgn0 = cp.zeros((N), dtype=np.float64)
+                sgn0p1 = cp.zeros((N), dtype=np.float64)
+                sgn1 = cp.zeros((N), dtype=np.float64)
+                sgn1p1 = cp.zeros((N), dtype=np.float64)
+                sgn2 = cp.zeros((N), dtype=np.float64)
+                sgn2p1 = cp.zeros((N), dtype=np.float64)
+                ssc = cp.zeros((N), dtype=np.float64)
+                sscp1 = cp.zeros((N), dtype=np.float64)
+                utilde = cp.zeros((N), dtype=np.float64)
+                utildep1 = cp.zeros((N), dtype=np.float64)
+                uvdif = cp.zeros((N), dtype=np.float64)
+                uvdifp1 = cp.zeros((N), dtype=np.float64)
+                vol = cp.ones((N), dtype=np.float64)
+                volm1 = cp.ones((N), dtype=np.float64) # just vol should be enough
+                vsc = cp.zeros((N), dtype=np.float64)
+                vscp1 = cp.zeros((N), dtype=np.float64)
+                w0 = cp.ones((N), dtype=np.float64)
+                w0m1 = cp.ones((N), dtype=np.float64)
+                w0p1 = cp.ones((N), dtype=np.float64)
+                w1 = cp.ones((N), dtype=np.float64)
+                w1m1 = cp.ones((N), dtype=np.float64)
+                w1p1 = cp.ones((N), dtype=np.float64)
+                w2 = cp.ones((N), dtype=np.float64)
+                w2m1 = cp.ones((N), dtype=np.float64)
+                w2p1 = cp.ones((N), dtype=np.float64)
+                w3 = cp.ones((N), dtype=np.float64)
+                w3m1 = cp.ones((N), dtype=np.float64)
 
                 # initialize control variable to 0
                 icntl = 0
@@ -139,45 +190,73 @@ def solve(step_algorithm, t_max, file_name, plots=5):
                 w1 = w0 * m / rho
                 w3 = (gamma - 1) * (e - 0.5 * m**2 / rho)
                 w2 = w0 * (e + w3) / rho
+                for i in range(1, N):
+                    w0m1[i] = cp.sqrt(volm1[i] * rho[i - 1])
+                    w1m1[i] = w0m1[i] * m[i - 1] / rho[i - 1]
+                    w3m1[i] = (gamma - 1) * (e[i - 1] - 0.5 * m[i - 1]**2 / rho[i - 1])
+                    w2m1[i] = w0m1[i] * (e[i - 1] + w3m1[i]) / rho[i - 1]
 
                 # calculate the fluxes at the cell center
                 Fc0 = w0 * w1
                 Fc1 = w1 * w1 + vol * w3 #maybe I should use ** instead of repeatation
                 Fc2 = w1 * w2
+                for i in range(1, N):
+                    Fc0m1[i] = w0m1[i] * w1m1[i]
+                    Fc1m1[i] = w1m1[i] * w1m1[i] + volm1[i] * w3m1[i] #maybe I should use ** instead of repeatation
+                    Fc2m1[i] = w1m1[i] * w2m1[i]
 
                 # calculate the fluxes at the cell walls
                 # assuming constant primitive variables
                 for i in range(1, N):
-                    Fl0[i] = Fc0[i - 1]
-                    Fl1[i] = Fc1[i - 1]
-                    Fl2[i] = Fc2[i - 1]
+                    Fl0[i] = Fc0m1[i]
+                    Fl1[i] = Fc1m1[i]
+                    Fl2[i] = Fc2m1[i]
                     Fr0[i] = Fc0[i]
                     Fr1[i] = Fc1[i]
                     Fr2[i] = Fc2[i]
+                for i in range(0, N - 1): # maybe start point should be 1 instead of 0
+                    Fl0p1[i] = Fc0[i]
+                    Fl1p1[i] = Fc1[i]
+                    Fl2p1[i] = Fc2[i]
+                    Fr0p1[i] = Fc0p1[i]
+                    Fr1p1[i] = Fc1p1[i]
+                    Fr2p1[i] = Fc2p1[i]
 
                 # calculate the flux differences at the cell walls
                 for i in range(1, N):
                     fludif0[i] = Fr0[i] - Fl0[i]
                     fludif1[i] = Fr1[i] - Fl1[i]
                     fludif2[i] = Fr2[i] - Fl2[i]
+                for i in range(0, N - 1): # maybe start point should be 1 instead of 0
+                    fludif0p1[i] = Fr0p1[i] - Fl0p1[i]
+                    fludif1p1[i] = Fr1p1[i] - Fl1p1[i]
+                    fludif2p1[i] = Fr2p1[i] - Fl2p1[i]
 
                 # calculate the tilded U variables = mean values at the interfaces
                 #--------------------------------------------------------------------
                 for i in range(1, N):
-                    rsumr[i] = 1 / (w0[i - 1] + w0[i])
-
-                    utilde[i] = (w1[i - 1] + w1[i]) * rsumr[i]
-                    htilde[i] = (w2[i - 1] + w2[i]) * rsumr[i]
-
+                    rsumr[i] = 1 / (w0m1[i] + w0[i])
+                    utilde[i] = (w1m1[i] + w1[i]) * rsumr[i]
+                    htilde[i] = (w2m1[i] + w2[i]) * rsumr[i]
                     absvt[i] = 0.5 * utilde[i] * utilde[i]
                     uvdif[i] = utilde[i] * fludif1[i]
-
                     ssc[i] = (gamma - 1) * (htilde[i] - absvt[i])
                     if ssc[i] > 0.0:
                         vsc[i] = cp.sqrt(ssc[i])
                     else:
                         vsc[i] = cp.sqrt(abs(ssc[i]))
                         icntl += 1
+                for i in range(0, N - 1): # maybe start point should be 1 instead of 0
+                    rsumrp1[i] = 1 / (w0[i] + w0p1[i])
+                    utildep1[i] = (w1[i] + w1p1[i]) * rsumrp1[i]
+                    htildep1[i] = (w2[i] + w2p1[i]) * rsumrp1[i]
+                    absvtp1[i] = 0.5 * utildep1[i] * utildep1[i]
+                    uvdifp1[i] = utildep1[i] * fludif1p1[i]
+                    sscp1[i] = (gamma - 1) * (htildep1[i] - absvtp1[i])
+                    if sscp1[i] > 0.0:
+                        vscp1[i] = cp.sqrt(sscp1[i])
+                    else:
+                        vscp1[i] = cp.sqrt(abs(sscp1[i]))
                 #--------------------------------------------------------------------
 
                 # calculate the eigenvalues and projection coefficients for each eigenvector
@@ -188,6 +267,13 @@ def solve(step_algorithm, t_max, file_name, plots=5):
                 sgn0 = -2 * (eiglam0 < 0.0) + 1.0 # -1 if <0.0, +1 if >=0 ?
                 sgn1 = -2 * (eiglam1 < 0.0) + 1.0 # -1 if <0.0, +1 if >=0 ?
                 sgn2 = -2 * (eiglam2 < 0.0) + 1.0 # -1 if <0.0, +1 if >=0 ?
+                for i in range(0, N - 1):
+                    eiglam0p1[i] = utildep1[i] - vscp1[i]
+                    eiglam1p1[i] = utildep1[i]
+                    eiglam2p1[i] = utildep1[i] + vscp1[i]
+                    sgn0p1[i] = -2 * (eiglam0p1[i] < 0.0) + 1.0 # -1 if <0.0, +1 if >=0 ?
+                    sgn1p1[i] = -2 * (eiglam1p1[i] < 0.0) + 1.0 # -1 if <0.0, +1 if >=0 ?
+                    sgn2p1[i] = -2 * (eiglam2p1[i] < 0.0) + 1.0 # -1 if <0.0, +1 if >=0 ?
 
                 a0 = 0.5 * ((gamma - 1) * (absvt * fludif0 + fludif2 - uvdif) - vsc * (fludif1 - utilde * fludif0)) / ssc
                 a1 = (gamma - 1) * ((htilde - 2 * absvt) * fludif0 + uvdif - fludif2) / ssc
@@ -199,12 +285,23 @@ def solve(step_algorithm, t_max, file_name, plots=5):
                     a0[i] /= eiglam0[i] + tiny
                     a1[i] /= eiglam1[i] + tiny
                     a2[i] /= eiglam2[i] + tiny
+                for i in range(0, N - 1):
+                    a0p1[i] = 0.5 * ((gamma - 1) * (absvtp1[i] * fludif0p1[i] + fludif2p1[i] - uvdifp1[i]) - vscp1[i] * (fludif1p1[i] - utildep1[i] * fludif0p1[i])) / sscp1[i]
+                    a1p1[i] = (gamma - 1) * ((htildep1[i] - 2 * absvtp1[i]) * fludif0p1[i] + uvdifp1[i] - fludif2p1[i]) / sscp1[i]
+                    a2p1[i] = 0.5 * ((gamma - 1) * (absvtp1[i] * fludif0p1[i] + fludif2p1[i] - uvdifp1[i]) + vscp1[i] * (fludif1p1[i] - utildep1[i] * fludif0p1[i])) / sscp1[i]
+                    a0p1[i] /= eiglam0p1[i] + tiny
+                    a1p1[i] /= eiglam1p1[i] + tiny
+                    a2p1[i] /= eiglam2p1[i] + tiny
 
                 # calculate the first order projection coefficients ac1
                 for i in range(1, N):
                     ac10[i] = -sgn0[i] * a0[i] * eiglam0[i]
                     ac11[i] = -sgn1[i] * a1[i] * eiglam1[i]
                     ac12[i] = -sgn2[i] * a2[i] * eiglam2[i]
+                for i in range(0, N - 1): # maybe start point should be 1 instead of 0
+                    ac10p1[i] = -sgn0p1[i] * a0p1[i] * eiglam0p1[i]
+                    ac11p1[i] = -sgn1p1[i] * a1p1[i] * eiglam1p1[i]
+                    ac12p1[i] = -sgn2p1[i] * a2p1[i] * eiglam2p1[i]
 
                 # apply the 'superbee' flux correction to made 2nd order projection
                 # coefficients ac2
@@ -235,6 +332,25 @@ def solve(step_algorithm, t_max, file_name, plots=5):
                         ((max(0.0, min(sbpar1 * a2[isb2[i]], max(a2[i], min(a2[isb2[i]], sbpar2 * a2[i])))) +
                         min(0.0, max(sbpar1 * a2[isb2[i]], min(a2[i], max(a2[isb2[i]], sbpar2 * a2[i]))))) *
                         (sgn2[i] - dtdx * eiglam2[i])))
+                ac20p1[0] = ac10p1[0] # maybe useless
+                ac21p1[0] = ac11p1[0] # maybe useless
+                ac22p1[0] = ac12p1[0] # maybe useless
+                ac20p1[N - 2] = ac10p1[N - 2]
+                ac21p1[N - 2] = ac11p1[N - 2]
+                ac22p1[N - 2] = ac12p1[N - 2]
+                for i in range(2, N - 2):
+                    ac20p1[i] = (ac10p1[i] + eiglam0p1[i] *
+                        ((max(0.0, min(sbpar1 * a0p1[isb0p1[i]], max(a0p1[i], min(a0p1[isb0p1[i]], sbpar2 * a0p1[i])))) +
+                        min(0.0, max(sbpar1 * a0[isb0p1[i]], min(a0p1[i], max(a0p1[isb0p1[i]], sbpar2 * a0p1[i]))))) *
+                        (sgn0p1[i] - dtdx * eiglam0p1[i])))
+                    ac21p1[i] = (ac11p1[i] + eiglam1p1[i] *
+                        ((max(0.0, min(sbpar1 * a1p1[isb1p1[i]], max(a1p1[i], min(a1p1[isb1p1[i]], sbpar2 * a1p1[i])))) +
+                        min(0.0, max(sbpar1 * a1p1[isb1p1[i]], min(a1p1[i], max(a1p1[isb1p1[i]], sbpar2 * a1p1[i]))))) *
+                        (sgn1p1[i] - dtdx * eiglam1p1[i])))
+                    ac22p1[i] = (ac12p1[i] + eiglam2p1[i] *
+                        ((max(0.0, min(sbpar1 * a2p1[isb2p1[i]], max(a2p1[i], min(a2p1[isb2p1[i]], sbpar2 * a2p1[i])))) +
+                        min(0.0, max(sbpar1 * a2p1[isb2p1[i]], min(a2p1[i], max(a2p1[isb2p1[i]], sbpar2 * a2p1[i]))))) *
+                        (sgn2p1[i] - dtdx * eiglam2p1[i])))
                 #-------------------------------------------------------------
                 # calculate the final fluxes
                 for i in range(1, N):
@@ -243,6 +359,12 @@ def solve(step_algorithm, t_max, file_name, plots=5):
                                    ac21[i] + eiglam2[i] * ac22[i])
                     F2[i] = 0.5 * (Fl2[i] + Fr2[i] + (htilde[i] - utilde[i] * vsc[i]) * ac20[i] +
                                    absvt[i] * ac21[i] + (htilde[i] + utilde[i] * vsc[i]) * ac22[i])
+                for i in range(1, N - 1):
+                    F0p1[i] = 0.5 * (Fl0p1[i] + Fr0p1[i] + ac20p1[i] + ac21p1[i] + ac22p1[i])
+                    F1p1[i] = 0.5 * (Fl1p1[i] + Fr1p1[i] + eiglam0p1[i] * ac20p1[i] + eiglam1p1[i] *
+                                   ac21p1[i] + eiglam2p1[i] * ac22p1[i])
+                    F2p1[i] = 0.5 * (Fl2p1[i] + Fr2p1[i] + (htildep1[i] - utildep1[i] * vscp1[i]) * ac20p1[i] +
+                                   absvtp1[i] * ac21p1[i] + (htildep1[i] + utildep1[i] * vscp1[i]) * ac22p1[i])
 
                 # calculate test variable for negative pressure check
                 for i in range(1, N - 1):
