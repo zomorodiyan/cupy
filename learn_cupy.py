@@ -198,5 +198,10 @@ cp.cuda.nvtx.RangePop(message, int id_color=-1) # Ends a nested range.
 
 '''
 
+aa = cp.array([1, 2, 3])
+bb = cp.array([4, 5, 6])
+cc = cp.stack((aa, bb, bb), axis=0)
+print(cc)
+
 # Reference Manual at:
 # https://docs-cupy.chainer.org/en/stable/reference/index.html

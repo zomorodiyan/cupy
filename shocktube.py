@@ -1,12 +1,10 @@
-# issues:
-# step_algorithm argument is obsolete and should be removed
-
 # Euler equations for Sod's shocktube problem
 
 import math
-from methods_stream import out_file
+from methods_stream import out_file, check
 import numpy as np
 import cupy as cp
+from methods import initial_U, Lax_Wendroff_1st_half_step, Lax_Wendroff_2nd_half_step, cmax, boundary_condition_U, boundary_condition_rho_m_e
 
 L = 1.0                     # length of shock tube
 gamma = 1.4                 # ratio of specific heats
@@ -24,115 +22,57 @@ def solve(step_algorithm, t_max, file_name, plots=5):
     :param file_name: core name of output files
     :param plots: number of plots, default is 5
     """
-    # initial values
-    p_left = 1.0
-    p_right = 0.1
-    rho_left = 1.0
-    rho_right = 0.125
-    v_left = 0.0
-    v_right = 0.0
-
-    rhov_left = rho_left * v_left
-    rhov_right = rho_right * v_right
-    e_left = p_left / (gamma - 1) + rho_left * v_left**2 / 2
-    e_right = p_right / (gamma - 1) + rho_right * v_right**2 / 2
-
-    U_gpu = cp.zeros((N, 3), dtype=np.float64)
-    U_gpu[:N/2+1, 0] = rho_left
-    U_gpu[N/2+1:, 0] = rho_right
-    U_gpu[:N/2+1, 1] = rhov_left
-    U_gpu[N/2+1:, 1] = rhov_right
-    U_gpu[:N/2+1, 2] = e_left
-    U_gpu[N/2+1:, 2] = e_right
-
-
+    U_gpu = initial_U(N, gamma)
     h = L / float(N - 1)
-    # end of initial values
 
     tau = 0
     t = 0.0
     step = 0
     plot = 0
+
     print(" Time t\t\trho_avg\t\tu_avg\t\te_avg\t\tP_avg")
     while True:
-        U = cp.asnumpy(U_gpu) # move the array to the host
-        out_file(U, plot, file_name, t, gamma)
+        U_gpu = boundary_condition_U(U_gpu)  # not required for solution, required for out_file()
+        out_file(U_gpu, plot, file_name, t, gamma)
         plot += 1
         if plot > plots:
             print(" Solutions in files 0-..", plots, "-" + file_name)
             break
         while t < t_max * plot / float(plots):
-            #U_gpu = cp.asarray(U) # move the array to the current device
-            # boundary condition
-            U_gpu[0, 0] = U_gpu[1, 0]
-            U_gpu[0, 1] = -U_gpu[1, 1]
-            U_gpu[0, 2] = U_gpu[1, 2]
-            U_gpu[-1, 0] = U_gpu[-2, 0]
-            U_gpu[-1, 1] = -U_gpu[-2, 1]
-            U_gpu[-1, 2] = U_gpu[-2, 2]
-            U = cp.asnumpy(U_gpu) # move the array to the host
-
-            c_max = 0.0
-            for j in range(N):
-                if U_gpu[j][0] != 0.0:
-                    rho_gpu = U_gpu[j][0]
-                    v_gpu = U_gpu[j][1] / rho_gpu
-                    P_gpu = (U_gpu[j][2] - rho_gpu * v_gpu**2 / 2) * (gamma - 1)
-                    c_gpu = cp.sqrt(gamma * abs(P_gpu) / rho_gpu)
-                    if c_max < c_gpu + abs(v_gpu):
-                        c_max = c_gpu + abs(v_gpu)
+            U_gpu = boundary_condition_U(U_gpu)
+            c_max = cmax(U_gpu, N, gamma)
             # time step
             tau = CFL * h / c_max
-            #print("tau: ", tau) # test
             if(tau < 1e-4):
                 break
-
-            # Lax Wendroff step and Roe step
-            is_Lax_Wendroff = False
             if(step_algorithm is "Lax_Wendroff_step"):
-                #{{{ Lax_Wendroff step algorithm
-                U_new_gpu = cp.zeros((N, 3), dtype=np.float64)
-                F_gpu = cp.zeros((N, 3), dtype=np.float64)
+                #{{{ temporary variables
+                tau_array = cp.full((N), tau, dtype=np.float64)   # in order to pass tau to cp.ElementwiseKernel methods
+                gamma_array = cp.full((N), gamma, dtype=np.float64)   # in order to pass gamma to cp.ElementwiseKernel methods
+                h_array = cp.full((N), h, dtype=np.float64)   # in order to pass h to cp.ElementwiseKernel methods
+                rho = U_gpu[:, 0]
+                m = U_gpu[:, 1]
+                e = U_gpu[:, 2]
+                rho2 = cp.empty_like(m)
+                m2 = cp.empty_like(m)
+                e2 = cp.empty_like(m)
+                rho3 = cp.empty_like(m)
+                m3 = cp.empty_like(m)
+                e3 = cp.empty_like(m)
 
-                # compute flux F from U
-                rho_gpu = U_gpu[:, 0]
-                m_gpu = U_gpu[:, 1]
-                e_gpu = U_gpu[:, 2]
-                P_gpu = (gamma - 1) * (e_gpu - m_gpu**2 / rho_gpu / 2)
-                F_gpu[:, 0] = m_gpu
-                F_gpu[:, 1] = m_gpu**2 / rho_gpu + P_gpu
-                F_gpu[:, 2] = m_gpu / rho_gpu * (e_gpu + P_gpu)
+                #(rho, m, e) to (rho2, m2, e2) first half-step of Lax.
+                Lax_Wendroff_1st_half_step(rho, m, e, tau_array, h_array, gamma_array, rho2, m2, e2)
 
+                #update rho2, m2, e2
+                rho2, m2, e2 = boundary_condition_rho_m_e(rho2, m2, e2)
 
-                for j in range(1, N - 1):
-                    for i in range(3):
-                        U_new_gpu[j, i] = ((U_gpu[j + 1, i] + U_gpu[j, i]) / 2 - tau / 2 / h * (F_gpu[j + 1, i] - F_gpu[j, i]))
+                # (rho, m, e) & (rho2, m2, e2) to (rho3, m3, e3) second half-step of Lax.
+                Lax_Wendroff_2nd_half_step(rho, m, e, rho2, m2, e2, tau_array, h_array, gamma_array, rho3, m3, e3)
 
-                # boundary condition
-                U_new_gpu[0, 0] = U_new_gpu[1, 0]
-                U_new_gpu[0, 1] = -U_new_gpu[1, 1]
-                U_new_gpu[0, 2] = U_new_gpu[1, 2]
-                U_new_gpu[-1, 0] = U_new_gpu[-2, 0]
-                U_new_gpu[-1, 1] = -U_new_gpu[-2, 1]
-                U_new_gpu[-1, 2] = U_new_gpu[-2, 2]
-
-
-                # compute flux at half steps
-                rho_gpu = U_new_gpu[:, 0]
-                m_gpu = U_new_gpu[:, 1]
-                e_gpu = U_new_gpu[:, 2]
-                P_gpu = (gamma - 1) * (e_gpu - m_gpu**2 / rho_gpu / 2)
-                F_gpu[:, 0] = m_gpu
-                F_gpu[:, 1] = m_gpu**2 / rho_gpu + P_gpu
-                F_gpu[:, 2] = m_gpu / rho_gpu * (e_gpu + P_gpu)
-
-                # step using half step flux
-                for j in range(1, N - 1):
-                    for i in range(3):
-                        U_new_gpu[j][i] = U_gpu[j][i] - tau / h * (F_gpu[j][i] - F_gpu[j - 1][i])
-
-                # update U from U_new
-                U_gpu = U_new_gpu
+                # (rho3, m3, e3) to U_gpu[N, 3]
+                U_gpu[:, 0] = rho3
+                U_gpu[:, 1] = m3
+                U_gpu[:, 2] = e3
                 #}}}
             elif(step_algorithm is "Roe_step"):
                 #{{{ Roe step algorithm
@@ -328,6 +268,7 @@ def solve(step_algorithm, t_max, file_name, plots=5):
             # add artificial viscosity
             for j in range(2, N):
                 U_gpu[j, :] += nu * tau / h * (U_temp_gpu[j, :] - U_temp_gpu[j - 1, :])
+
 
             t += tau
             step += 1
