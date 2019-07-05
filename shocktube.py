@@ -275,9 +275,10 @@ def solve(step_algorithm, t_max, file_name, plots=5):
                     sgn1p1[i] = -2 * (eiglam1p1[i] < 0.0) + 1.0 # -1 if <0.0, +1 if >=0 ?
                     sgn2p1[i] = -2 * (eiglam2p1[i] < 0.0) + 1.0 # -1 if <0.0, +1 if >=0 ?
 
-                a0 = 0.5 * ((gamma - 1) * (absvt * fludif0 + fludif2 - uvdif) - vsc * (fludif1 - utilde * fludif0)) / ssc
-                a1 = (gamma - 1) * ((htilde - 2 * absvt) * fludif0 + uvdif - fludif2) / ssc
-                a2 = 0.5 * ((gamma - 1) * (absvt * fludif0 + fludif2 - uvdif) + vsc * (fludif1 - utilde * fludif0)) / ssc
+                for i in range(1, N):
+                    a0[i] = 0.5 * ((gamma - 1) * (absvt[i] * fludif0[i] + fludif2[i] - uvdif[i]) - vsc[i] * (fludif1[i] - utilde[i] * fludif0[i])) / ssc[i]
+                    a1[i] = (gamma - 1) * ((htilde[i] - 2 * absvt[i]) * fludif0[i] + uvdif[i] - fludif2[i]) / ssc[i]
+                    a2[i] = 0.5 * ((gamma - 1) * (absvt[i] * fludif0[i] + fludif2[i] - uvdif[i]) + vsc[i] * (fludif1[i] - utilde[i] * fludif0[i])) / ssc[i]
 
                 # divide the projection coefficients by the wave speeds
                 # to evade expansion correction
@@ -338,7 +339,7 @@ def solve(step_algorithm, t_max, file_name, plots=5):
                 ac20p1[N - 2] = ac10p1[N - 2]
                 ac21p1[N - 2] = ac11p1[N - 2]
                 ac22p1[N - 2] = ac12p1[N - 2]
-                for i in range(2, N - 2):
+                for i in range(1, N - 2):
                     ac20p1[i] = (ac10p1[i] + eiglam0p1[i] *
                         ((max(0.0, min(sbpar1 * a0p1[isb0p1[i]], max(a0p1[i], min(a0p1[isb0p1[i]], sbpar2 * a0p1[i])))) +
                         min(0.0, max(sbpar1 * a0[isb0p1[i]], min(a0p1[i], max(a0p1[isb0p1[i]], sbpar2 * a0p1[i]))))) *

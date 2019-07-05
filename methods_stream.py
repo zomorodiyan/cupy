@@ -3,7 +3,7 @@ def check(U, N, n, i, label):
     for j in range(n):
         print("U[" + str(N + j) + "][" + str(i) + "] = " + str(U[N + j][i]))
 #'''
-
+#{{{
 def out_file(U, plot, file_name, t, gamma=1.4):
     """ write solution in plot files and print averages"""
     file = open(str(plot) + "-" + file_name, "w")
@@ -38,3 +38,4 @@ def out_file(U, plot, file_name, t, gamma=1.4):
         P_avg /= N
     print(" t: \t" + str(t) + "  rho_avg: " + str(rho_avg) + "  v_avg: " + str(v_avg) + "  e_avg: " + str(e_avg) +  "  P_avg: " + str(P_avg))
     file.close()
+#}}}
